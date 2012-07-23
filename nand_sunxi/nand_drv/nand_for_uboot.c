@@ -4,24 +4,25 @@
 
 #define  OOB_BUF_SIZE                   32
 
-
-extern int NAND_DmaInit(void);
-extern int NAND_DmaExit(void);
-extern int OSAL_printf(const char * str, ...);
+extern int NAND_Print(const char * str, ...);
+static int OSAL_printf(const char * str, ...)
+{
+    NAND_Print(str);
+}
 
 static block_dev_desc_t 	nand_blk_dev;
 
 block_dev_desc_t *nand_get_dev(int dev)
 {
 	nand_blk_dev.dev = dev;
-	nand_blk_dev.lba = sunxi_nand_getpart_size(dev);
+	nand_blk_dev.lba = sunxi_partition_get_size(dev);
 
 	return ((block_dev_desc_t *) & nand_blk_dev);
 }
 
 unsigned long  nand_read_uboot(int dev_num, unsigned long start, unsigned long blkcnt, void *dst)
 {
-	start += sunxi_nand_getpart_offset(dev_num);
+	start += sunxi_partition_get_offset(dev_num);
 	if(!NAND_LogicRead((int)start, (int )blkcnt, dst))
 	{
 		return blkcnt;
@@ -31,7 +32,7 @@ unsigned long  nand_read_uboot(int dev_num, unsigned long start, unsigned long b
 
 unsigned long  nand_write_uboot(int dev_num, unsigned long start, unsigned long blkcnt, void *dst)
 {
-	start += sunxi_nand_getpart_offset(dev_num);
+	start += sunxi_partition_get_offset(dev_num);
 	if(!NAND_LogicWrite((int)start, (int )blkcnt, dst))
 	{
 		return blkcnt;
@@ -52,14 +53,14 @@ int nand_erase_uboot(char *dev_part)
 	if((*dev_part >= '0') && (*dev_part <= '9'))
 	{
 		dev_num = simple_strtoul(dev_part, 0, 10);
-		start =  sunxi_nand_getpart_offset(dev_num);
-		size  =  sunxi_nand_getpart_size(dev_num);
-		sunxi_nand_getpart_name(dev_num, &partname[0]);
+		start =  sunxi_partition_get_offset(dev_num);
+		size  =  sunxi_partition_get_size(dev_num);
+		sunxi_partition_get_name(dev_num, &partname[0]);
 	}
 	else
 	{
-		start =  sunxi_nand_getpart_offset_byname(dev_part);
-		size  =  sunxi_nand_getpart_size_byname(dev_part);
+		start =  sunxi_partition_get_offset_byname(dev_part);
+		size  =  sunxi_partition_get_size_byname(dev_part);
 		strncpy(partname, dev_part, 12);
 	}
 
@@ -121,7 +122,6 @@ int nand_init_uboot(int verbose)
 	nand_blk_dev.block_read = nand_read_uboot;
 	nand_blk_dev.block_write = nand_write_uboot;
 
-	sunxi_nand_scan_partition();
 	//fat_register_device(&nand_blk_dev, 1);
 	return 0;
 }
